@@ -1,80 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { queryDuckDB } from "@/lib/duckdb";
-import { sanitizeIdentifier, sanitizeLayer } from "@/lib/queryGuard";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
-  request: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
-  try {
-    const { token } = await params;
+  const { token } = await params;
 
-    if (!token) {
-      return NextResponse.json({ error: "Share token required" }, { status: 400 });
-    }
+  const dashboard = await prisma.dashboard.findFirst({
+    where: { shareToken: token, isPublic: true },
+    include: { widgets: { orderBy: { createdAt: "asc" } } },
+  });
 
-    const dashboard = await prisma.dashboard.findFirst({
-      where: {
-        shareToken: token,
-        isPublic: true,
-      },
-      include: {
-        widgets: true,
-      },
-    });
+  if (!dashboard) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    if (!dashboard) {
-      return NextResponse.json({ error: "Public dashboard not found or link has expired" }, { status: 404 });
-    }
+  // Load data for each widget
+  const widgetsWithData = await Promise.all(
+    dashboard.widgets.map(async (w) => {
+      const cfg = JSON.parse(w.config || "{}");
+      const layer = cfg.layer || (cfg.dataSource ? cfg.dataSource.split("/")[0].toLowerCase() : null);
+      const table = cfg.table || (cfg.dataSource ? cfg.dataSource.split("/").slice(1).join("/") : null);
+      let rows: any[] = [];
 
-    // Execute queries for widgets
-    const widgetDataPromises = dashboard.widgets.map(async (widget) => {
-      try {
-        const config = JSON.parse(widget.config || "{}");
-        const tableName = config.tableName || config.dataSource || dashboard.sourceTable;
-        const layerName = config.layer || dashboard.sourceLayer || "GOLD";
-
-        if (!tableName) {
-          return { widgetId: widget.id, data: [] };
-        }
-
-        const safeTable = sanitizeIdentifier(tableName).toLowerCase();
-        const safeLayer = sanitizeLayer(layerName);
-        const limit = parseInt(config.limit || "500", 10);
-
-        const sql = `SELECT * FROM pg.${safeLayer}."${safeTable}" LIMIT ${limit}`;
-        const data = await queryDuckDB(sql);
-
-        return { widgetId: widget.id, data };
-      } catch (err: any) {
-        console.error(`[Public Dashboard API] Widget ${widget.id} query error:`, err);
-        return { widgetId: widget.id, data: [], error: err.message };
+      if (layer && table) {
+        try {
+          let query: string;
+          if (w.type === "KPI" && cfg.xField && cfg.yField) {
+            const agg = cfg.yField.toUpperCase();
+            query = `SELECT ${agg}("${cfg.xField}") as "${cfg.xField}" FROM "${layer}"."${table}"`;
+          } else {
+            query = `SELECT * FROM "${layer}"."${table}" LIMIT 1000`;
+          }
+          rows = await prisma.$queryRawUnsafe(query);
+          // Convert BigInt
+          rows = JSON.parse(JSON.stringify(rows, (_, v) => typeof v === "bigint" ? Number(v) : v));
+        } catch {}
       }
-    });
+      return { id: w.id, type: w.type, title: w.title, cfg, rows };
+    })
+  );
 
-    const widgetResults = await Promise.all(widgetDataPromises);
-    const dataMap: Record<number, any[]> = {};
-    widgetResults.forEach((res) => {
-      dataMap[res.widgetId] = res.data;
-    });
-
-    return NextResponse.json({
-      dashboard: {
-        id: dashboard.id,
-        name: dashboard.name,
-        description: dashboard.description,
-        layout: dashboard.layout,
-        widgets: dashboard.widgets,
-        sourceTable: dashboard.sourceTable,
-        sourceLayer: dashboard.sourceLayer,
-      },
-      widgetData: dataMap,
-    });
-  } catch (error: any) {
-    console.error("[Public Dashboard API] Error fetching public dashboard:", error);
-    return NextResponse.json({ error: error.message || "Failed to load public dashboard" }, { status: 500 });
-  }
+  return NextResponse.json({ name: dashboard.name, widgets: widgetsWithData });
 }
