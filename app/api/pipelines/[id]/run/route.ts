@@ -70,7 +70,7 @@ export async function POST(
         status: result.success ? "SUCCESS" : "FAILED",
         finishedAt: new Date(),
         rowsOutput: result.rows,
-        errorMessage: result.error || null,
+        errorMessage: result.success ? null : (result.error || null),
         logs: result.logs || "",
       },
     });

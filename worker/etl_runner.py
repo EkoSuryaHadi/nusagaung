@@ -23,8 +23,11 @@ import re as _re
 import sys
 import os
 import datetime
+import warnings
 from pathlib import Path
 from datetime import datetime, timezone
+
+warnings.filterwarnings("ignore")
 
 import pandas as pd
 from sqlalchemy import create_engine, text

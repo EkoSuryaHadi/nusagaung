@@ -182,7 +182,7 @@ export default function PipelineDetailPage() {
                   {run.startedAt ? new Date(run.startedAt).toLocaleString("id-ID") : "—"}
                 </span>
                 {run.rowsOutput != null && <span className="text-emerald-400 text-xs">{run.rowsOutput.toLocaleString()} rows</span>}
-                {run.errorMessage && <span className="text-red-400 text-xs truncate">{run.errorMessage}</span>}
+                {run.status === "FAILED" && run.errorMessage && <span className="text-red-400 text-xs truncate">{run.errorMessage}</span>}
               </div>
             ))}
           </div>
