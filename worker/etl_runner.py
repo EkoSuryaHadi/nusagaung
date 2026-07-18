@@ -60,9 +60,26 @@ def sanitize_layer(layer: str) -> str:
     return layer
 
 
+def clean_db_url(url: str) -> str:
+    """Strip Prisma-specific query parameters like ?schema=public that psycopg2 rejects."""
+    if not url:
+        return url
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    try:
+        parsed = urlparse(url)
+        if parsed.query:
+            qs = parse_qs(parsed.query)
+            qs.pop("schema", None)
+            new_query = urlencode(qs, doseq=True)
+            return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+    except Exception:
+        pass
+    return url
+
+
 def get_engine():
     """Create SQLAlchemy engine from DATABASE_URL env var."""
-    db_url = os.environ.get("DATABASE_URL", "")
+    db_url = clean_db_url(os.environ.get("DATABASE_URL", ""))
     if not db_url:
         raise RuntimeError("DATABASE_URL not set")
     return create_engine(db_url)
@@ -985,7 +1002,7 @@ def write_output(df: pd.DataFrame, config: dict, pipeline_context: dict | None =
     write_mode = (config.get("writeMode") or step_cfg.get("writeMode") or "overwrite").lower().strip()
     primary_key_raw = config.get("primaryKey") or step_cfg.get("primaryKey") or ""
     
-    db_url = os.environ.get("DATABASE_URL", "")
+    db_url = clean_db_url(os.environ.get("DATABASE_URL", ""))
     if not db_url:
         raise RuntimeError("DATABASE_URL not set")
 
@@ -1260,7 +1277,7 @@ def ingest_csv_to_bronze(file_path: str, source_id: int, file_size: int | None =
     # Generate bronze table name
     table_name = f"csv_{source_id}"
     
-    db_url = os.environ.get("DATABASE_URL", "")
+    db_url = clean_db_url(os.environ.get("DATABASE_URL", ""))
     if not db_url:
         raise RuntimeError("DATABASE_URL not set")
 
