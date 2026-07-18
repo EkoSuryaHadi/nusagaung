@@ -1,13 +1,10 @@
 # Multi-stage Dockerfile for GaungNusa (Next.js + Python ETL/ML Worker)
 FROM node:20-slim AS base
 
-# Install Python 3.11, pip, and PostgreSQL build dependencies
+# Install runtime Python 3 and curl (lightweight, uses pre-built wheels)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
-    python3-dev \
-    build-essential \
-    libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
