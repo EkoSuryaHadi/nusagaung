@@ -5,6 +5,8 @@ import { spawn } from "child_process";
 import { writeFileSync } from "fs";
 import path from "path";
 
+import os from "os";
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -48,7 +50,7 @@ export async function POST(
     }
 
     // Write pipeline config for Python worker
-    const configPath = `/tmp/gaung_pipeline_${run.id}.json`;
+    const configPath = path.join(os.tmpdir(), `gaung_pipeline_${run.id}.json`);
     writeFileSync(configPath, JSON.stringify({
       pipelineId: pipeline.id,
       runId: run.id,
@@ -156,7 +158,8 @@ function runETL(configPath: string): Promise<{
 }> {
   return new Promise((resolve) => {
     const scriptPath = path.join(process.cwd(), "worker", "etl_runner.py");
-    const proc = spawn("python3", [scriptPath, configPath], {
+    const pythonCmd = process.env.PYTHON_PATH || (process.platform === "win32" ? "python" : "python3");
+    const proc = spawn(pythonCmd, [scriptPath, configPath], {
       env: { ...process.env },
       timeout: 300000,
     });
