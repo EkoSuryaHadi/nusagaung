@@ -1,0 +1,95 @@
+version: '3.8'
+x-airflow-common:
+  &airflow-common
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.7.2}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER:-airflow}:${AIRFLOW_POSTGRES_PASSWORD:-airflow}@postgres-airflow:5432/${AIRFLOW_POSTGRES_DB:-airflow}
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER:-airflow}:${AIRFLOW_POSTGRES_PASSWORD:-airflow}@postgres-airflow:5432/${AIRFLOW_POSTGRES_DB:-airflow}
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
+    _PIP_ADDITIONAL_REQUIREMENTS: 'pandas sqlalchemy cryptography psycopg2-binary requests'
+    # DATABASE_URL points to host Postgres database (using host.docker.internal)
+    DATABASE_URL: ${GAUNG_DATABASE_URL:-postgresql://gaung:gaung123@host.docker.internal:5432/gaung}
+    GAUNG_WS_URL: http://host.docker.internal:3100
+    GAUNG_CALLBACK_URL: http://host.docker.internal:3000/api/webhook/airflow
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./worker:/opt/airflow/worker
+    - ./uploads:/opt/airflow/uploads
+  depends_on:
+    postgres-airflow:
+      condition: service_healthy
+
+services:
+  postgres-airflow:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: ${AIRFLOW_POSTGRES_USER:-airflow}
+      POSTGRES_DB: ${AIRFLOW_POSTGRES_DB:-airflow}
+      POSTGRES_PASSWORD: ${AIRFLOW_POSTGRES_PASSWORD:-airflow}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-airflow-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_POSTGRES_USER:-airflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USERNAME:-airflow}" \
+          --firstname admin \
+          --lastname admin \
+          --role Admin \
+          --email "${AIRFLOW_ADMIN_EMAIL:-admin@gaungnusa.com}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD:-airflow}"
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: always
+
+  ws-bridge:
+    image: node:18-alpine
+    container_name: gaungnusa-ws-bridge-1
+    working_dir: /opt/airflow
+    command: node worker/ws_bridge.js
+    volumes:
+      - ./worker:/opt/airflow/worker
+      - ./node_modules:/opt/airflow/node_modules
+    ports:
+      - "3008:3008"
+      - "3100:3100"
+    environment:
+      WS_PORT: 3008
+      WS_HTTP_PORT: 3100
+      NODE_PATH: /opt/airflow/node_modules
+    restart: always
+
+volumes:
+  postgres-airflow-db-volume:
