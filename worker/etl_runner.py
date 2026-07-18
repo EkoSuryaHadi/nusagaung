@@ -29,6 +29,28 @@ from datetime import datetime, timezone
 import pandas as pd
 from sqlalchemy import create_engine, text
 
+def load_env_file():
+    """Fallback to read .env file from project root if DATABASE_URL is not set in process environment."""
+    if os.environ.get("DATABASE_URL"):
+        return
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(base_dir, ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
+load_env_file()
+
 # ============================================================
 # Helpers
 # ============================================================
