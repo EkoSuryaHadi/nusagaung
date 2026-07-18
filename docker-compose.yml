@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gaungnusa-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gaung}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gaung123}
+      POSTGRES_DB: ${POSTGRES_DB:-gaungnusa}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gaung} -d ${POSTGRES_DB:-gaungnusa}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gaungnusa-app
+    restart: always
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-gaung}:${POSTGRES_PASSWORD:-gaung123}@postgres:5432/${POSTGRES_DB:-gaungnusa}?schema=public"
+      NODE_ENV: "production"
+      SESSION_SECRET: "${SESSION_SECRET:-super-secret-key-32-characters-minimum-length}"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
