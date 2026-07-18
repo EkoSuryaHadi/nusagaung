@@ -5,9 +5,15 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 GaungNusa provides full containerization including Next.js App, Python 3.11 ETL/ML Worker, and PostgreSQL 16 Lakehouse Database.
 
 ### 1. Start Services
-```bash
-docker compose up -d --build
-```
+- **Docker Compose:**
+  ```bash
+  docker compose up -d --build
+  ```
+- **Podman Compose (Windows / Linux):**
+  ```bash
+  podman machine start   # jika VM belum berjalan
+  podman-compose up -d --build
+  ```
 
 ### 2. Access Platform
 * **Web App:** [http://localhost:3000](http://localhost:3000)
