@@ -30,7 +30,8 @@ export async function POST(request: Request) {
       email: user.email,
       role: user.role as any,
       tenantId: user.tenant?.id,
-      tenantSlug: user.tenant?.slug,
+      tenantName: user.tenant?.name || "GaungNusa",
+      tenantSlug: user.tenant?.slug === "default-tenant" ? "nusa2" : (user.tenant?.slug || "nusa2"),
     };
     
     const token = await signSession(session);

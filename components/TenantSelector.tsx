@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/auth-client";
 
 interface TenantInfo {
   tenantId?: number;
+  tenantName?: string;
   tenantSlug?: string;
 }
 
@@ -16,26 +17,31 @@ export default function TenantSelector() {
       .then((r) => r.json())
       .then((data) => {
         if (data.session) {
+          const rawSlug = data.session.tenantSlug;
+          const displaySlug = (!rawSlug || rawSlug === "default-tenant") ? "nusa2" : rawSlug;
+          const displayName = data.session.tenantName || displaySlug;
           setTenant({
             tenantId: data.session.tenantId,
-            tenantSlug: data.session.tenantSlug,
+            tenantName: displayName,
+            tenantSlug: displaySlug,
           });
         }
       })
       .catch(() => {});
   }, []);
 
-  if (!tenant.tenantSlug) return null;
+  const nameToDisplay = tenant.tenantName || tenant.tenantSlug || "nusa2";
+  const initial = nameToDisplay.charAt(0).toUpperCase();
 
   return (
-    <div className="px-5 py-3 border-b border-slate-800/50">
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-6 rounded-md bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-[10px] font-bold text-indigo-400 shrink-0">
-          {tenant.tenantSlug.charAt(0).toUpperCase()}
+    <div className="px-5 py-3 border-b border-amber-950/40">
+      <div className="flex items-center gap-2.5">
+        <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xs font-bold text-amber-400 shrink-0">
+          {initial}
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wider">Tenant</p>
-          <p className="text-xs text-slate-300 truncate font-medium">{tenant.tenantSlug}</p>
+          <p className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">Tenant</p>
+          <p className="text-xs text-amber-200/90 truncate font-medium">{nameToDisplay}</p>
         </div>
       </div>
     </div>

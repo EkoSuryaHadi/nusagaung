@@ -21,13 +21,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email sudah terdaftar. Silakan masuk di halaman login." }, { status: 400 });
     }
 
-    // Ensure a default Tenant exists for multi-tenant isolation
     let tenant = await prisma.tenant.findFirst();
     if (!tenant) {
       tenant = await prisma.tenant.create({
         data: {
-          name: "Workspace Utama",
-          slug: "default-tenant",
+          name: "GaungNusa",
+          slug: "nusa2",
+        },
+      });
+    } else if (tenant.slug === "default-tenant") {
+      tenant = await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: {
+          name: "GaungNusa",
+          slug: "nusa2",
         },
       });
     }
@@ -53,7 +60,8 @@ export async function POST(request: Request) {
       email: user.email,
       role: user.role as any,
       tenantId: user.tenant?.id,
-      tenantSlug: user.tenant?.slug,
+      tenantName: user.tenant?.name || "GaungNusa",
+      tenantSlug: user.tenant?.slug || "nusa2",
     };
 
     const token = await signSession(session);

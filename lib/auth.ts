@@ -10,6 +10,7 @@ export interface SessionData {
   email: string;
   role: Role;
   tenantId?: number;
+  tenantName?: string;
   tenantSlug?: string;
 }
 
@@ -41,6 +42,7 @@ export async function verifySessionToken(token: string): Promise<SessionData | n
       email: (payload.email as string) || "",
       role: payload.role as Role,
       tenantId: payload.tenantId as number | undefined,
+      tenantName: payload.tenantName as string | undefined,
       tenantSlug: payload.tenantSlug as string | undefined,
     };
   } catch {
