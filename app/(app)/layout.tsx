@@ -1,16 +1,17 @@
 import Sidebar from "@/components/Sidebar";
 import AuthGuard from "@/components/AuthGuard";
 import ChatPanel from "./components/ChatPanel";
+import { SidebarProvider, MainContent } from "@/components/SidebarProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <div className="flex min-h-screen">
+      <SidebarProvider>
         <Sidebar />
-        <main className="flex-1 lg:ml-56 transition-all duration-300">
+        <MainContent>
           {children}
-        </main>
-      </div>
+        </MainContent>
+      </SidebarProvider>
       <ChatPanel />
     </AuthGuard>
   );

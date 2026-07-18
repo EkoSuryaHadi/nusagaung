@@ -132,7 +132,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              style={{ width: "100%", padding: "12px", borderRadius: 8, background: "var(--gold-500)", color: "#000", fontWeight: 600, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyCenter: "center", gap: 8, marginTop: 8 }}
+              style={{ width: "100%", padding: "12px", borderRadius: 8, background: "var(--gold-500)", color: "#000", fontWeight: 600, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 8 }}
             >
               <UserPlus style={{ width: 16, height: 16 }} />
               {loading ? "Mendaftar..." : "Daftar Akun"}
