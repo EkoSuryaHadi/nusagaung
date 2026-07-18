@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { getStoredAuth, logoutClient } from "@/lib/auth-client";
+import TenantSelector from "./TenantSelector";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
